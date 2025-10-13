@@ -1,45 +1,21 @@
 package h3d.prim;
 import h3d.col.Point;
 
-enum abstract Axis(Int) to Int {
-	var X;
-	var Y;
-	var Z;
-}
-
 class Capsule extends Polygon {
 
 	var ray : Float;
 	var length : Float;
 	var segs : Int;
 
-	public function new( ray = 1., length = 1., segs = 8, axis: Axis = X ) {
+	public function new( ray = 1., length = 1., segs = 8 ) {
 		this.ray = ray;
 		this.length = length;
 		this.segs = segs;
 
-		inline function rotate(pt: Point) {
-			var x = pt.x;
-			var y = pt.y;
-			var z = pt.z;
-			switch (axis) {
-				case X:
-				case Y:
-					pt.y = x;
-					pt.z = z;
-					pt.x = -y;
-				case Z:
-					pt.z = -x;
-					pt.x = z;
-					pt.y = y;
-			}
-			return pt;
-		};
-
 		var dp = Math.PI / segs;
 		var pts = [], idx = new hxd.IndexBuffer();
 		normals = [];
-		function halfSphere(offset : Float, offsetPhi : Float) {
+		function halfSphere(offsetX : Float, offsetPhi : Float) {
 			var indexOffset = pts.length;
 			for( y in 0...segs+1 ) {
 				var t = (y / segs) * Math.PI;
@@ -49,8 +25,8 @@ class Capsule extends Polygon {
 				for( x in 0...segs+1 ) {
 					var px = st * Math.cos(p);
 					var py = st * Math.sin(p);
-					pts.push(rotate(new Point(px * ray + offset, py * ray, pz * ray)));
-					normals.push(rotate(new Point(px, py, pz)));
+					pts.push(new Point(px * ray + offsetX, py * ray, pz * ray));
+					normals.push(new Point(px, py, pz));
 					p += dp;
 				}
 			}
@@ -80,10 +56,10 @@ class Capsule extends Polygon {
 				var t = y / segs * Math.PI;
 				var st = Math.sin(t);
 				var pz = Math.cos(t);
-				pts.push(rotate(new Point(-length * 0.5, st * ray, pz * ray)));
-				pts.push(rotate(new Point(length * 0.5, st * ray, pz * ray)));
-				normals.push(rotate(new Point(0.0, st, pz)));
-				normals.push(rotate(new Point(0.0, st, pz)));
+				pts.push(new Point(-length * 0.5, st * ray, pz * ray));
+				pts.push(new Point(length * 0.5, st * ray, pz * ray));
+				normals.push(new Point(0.0, st, pz));
+				normals.push(new Point(0.0, st, pz));
 			}
 			for( x in 0...segs * 2 ) {
 				inline function vertice(i) return i + indexOffset;
@@ -113,18 +89,13 @@ class Capsule extends Polygon {
 	override function addNormals() {
 	}
 
-	public static function defaultUnitCapsule(axis: Axis = X) {
+	public static function defaultUnitCapsule() {
 		var engine = h3d.Engine.getCurrent();
-		var axisCache = @:privateAccess engine.resCache.get(Capsule);
-		if (axisCache == null) {
-			axisCache = [];
-			@:privateAccess engine.resCache.set(Capsule, axisCache);
-		}
-		var s : Capsule = axisCache[axis];
+		var s : Capsule = @:privateAccess engine.resCache.get(Capsule);
 		if( s != null )
 			return s;
-		s = new h3d.prim.Capsule(1, 1, 16, axis);
-		axisCache[axis] = s;
+		s = new h3d.prim.Capsule(1, 1, 16);
+		@:privateAccess engine.resCache.set(Capsule, s);
 		return s;
 	}
 

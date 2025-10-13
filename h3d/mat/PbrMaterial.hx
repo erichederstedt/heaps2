@@ -244,8 +244,6 @@ class PbrMaterial extends Material {
 			Reflect.deleteField(props, "depthPrepass");
 		if ( !props.flipBackFaceNormal )
 			Reflect.deleteField(props, "flipBackFaceNormal");
-		if ( !props.ignoreCollide )
-			Reflect.deleteField(props, "ignoreCollide");
 		if ( props.parallaxSteps == h3d.shader.Parallax.MAX_LAYERS || props.parallaxSteps == 0 )
 			Reflect.deleteField(props, "parallaxSteps");
 		#end
@@ -283,7 +281,10 @@ class PbrMaterial extends Material {
 		case Overlay:
 			mainPass.setPassName("overlay");
 		case Decal:
-			mainPass.setPassName("decal");
+			if (props.emissive != 0)
+				mainPass.setPassName("emissiveDecal");
+			else
+				mainPass.setPassName("decal");
 			var vd = mainPass.getShader(h3d.shader.VolumeDecal);
 			if( vd == null ) {
 				vd = new h3d.shader.VolumeDecal(1,1);
@@ -296,7 +297,10 @@ class PbrMaterial extends Material {
 				mainPass.addShader(sv);
 			}
 		case DecalPass:
-			mainPass.setPassName("decal");
+			if (props.emissive != 0)
+				mainPass.setPassName("emissiveDecal");
+			else
+				mainPass.setPassName("decal");
 			var sv = mainPass.getShader(h3d.shader.pbr.StrengthValues);
 			if( sv == null ) {
 				sv = new h3d.shader.pbr.StrengthValues();
@@ -404,8 +408,6 @@ class PbrMaterial extends Material {
 			var passName = switch (props.mode) {
 			case PBR:
 				"depthPrepass";
-			case Forward:
-				"forwardDepthPrepass";
 			case BeforeTonemapping:
 				"beforeTonemappingDepthPrepass";
 			default:
@@ -422,6 +424,9 @@ class PbrMaterial extends Material {
 				}
 
 				var p = allocPass(passName);
+				var killAlpha = new h3d.shader.KillAlpha();
+				killAlpha.threshold = 0.5;
+				p.addShader(killAlpha);
 				p.depthWrite = true;
 				p.depthTest = Less;
 				p.culling = mainPass.culling;

@@ -66,6 +66,7 @@ class DepthProps {
 	public var format : hxd.PixelFormat;
 	public var bias : Single;
 	public var slopeScaledBias : Single;
+	public var clamp : Bool;
 	public function new() {}
 }
 
@@ -75,7 +76,8 @@ class PipelineBuilder {
 	static inline var PSIGN_COLOR_MASK = PSIGN_MATID + 4;
 	static inline var PSIGN_DEPTH_BIAS = PSIGN_COLOR_MASK + 1;
 	static inline var PSIGN_SLOPE_SCALED_DEPTH_BIAS = PSIGN_DEPTH_BIAS + 4;
-	static inline var PSIGN_STENCIL_MASK = PSIGN_SLOPE_SCALED_DEPTH_BIAS + 4;
+	static inline var PSIGN_DEPTH_CLAMP = PSIGN_SLOPE_SCALED_DEPTH_BIAS + 4;
+	static inline var PSIGN_STENCIL_MASK = PSIGN_DEPTH_CLAMP + 1;
 	static inline var PSIGN_STENCIL_OPS = PSIGN_STENCIL_MASK + 2;
 	static inline var PSIGN_RENDER_TARGETS = PSIGN_STENCIL_OPS + 4;
 	static inline var PSIGN_DEPTH_TARGET_FORMAT = PSIGN_RENDER_TARGETS + 8;
@@ -96,7 +98,6 @@ class PipelineBuilder {
 
 	public function new() {
 		if( PSIGN_SIZE > 64 ) throw "assert";
-		setDepthBias(0, 0);
 	}
 
 	static function getRTBits( tex : h3d.mat.Texture ) {
@@ -130,10 +131,18 @@ class PipelineBuilder {
 		needFlush = sh.mode != Compute;
 	}
 
-	public function setDepthBias( depthBias : Float, slopeScaledBias : Float  ) {
-		signature.setF32(PSIGN_DEPTH_BIAS, depthBias);
-		signature.setF32(PSIGN_SLOPE_SCALED_DEPTH_BIAS, slopeScaledBias);
-		needFlush = true;
+	function setDepthProps( depth : h3d.mat.Texture ) {
+		if( depth == null ) {
+			signature.setI32(PSIGN_DEPTH_TARGET_FORMAT,0);
+			signature.setF32(PSIGN_DEPTH_BIAS,0);
+			signature.setF32(PSIGN_SLOPE_SCALED_DEPTH_BIAS,0);
+			signature.setUI8(PSIGN_DEPTH_CLAMP,0);
+		} else {
+			signature.setI32(PSIGN_DEPTH_TARGET_FORMAT, depth.format.getIndex());
+			signature.setF32(PSIGN_DEPTH_BIAS, depth.depthBias);
+			signature.setF32(PSIGN_SLOPE_SCALED_DEPTH_BIAS, depth.slopeScaledBias);
+			signature.setUI8(PSIGN_DEPTH_CLAMP, depth.depthClamp ? 1 : 0);
+		}
 	}
 
 	static function initFormats() {
@@ -148,6 +157,7 @@ class PipelineBuilder {
 		var d = tmpDepth;
 		d.format = FORMATS[signature.getI32(PSIGN_DEPTH_TARGET_FORMAT)];
 		d.bias = signature.getF32(PSIGN_DEPTH_BIAS);
+		d.clamp = signature.getUI8(PSIGN_DEPTH_CLAMP) != 0;
 		d.slopeScaledBias = signature.getF32(PSIGN_SLOPE_SCALED_DEPTH_BIAS);
 		return d;
 	}
@@ -155,8 +165,8 @@ class PipelineBuilder {
 	public function setRenderTarget( tex : h3d.mat.Texture, depthEnabled : Bool ) {
 		signature.setI32(PSIGN_RENDER_TARGETS, tex == null ? 0 : getRTBits(tex));
 		signature.setI32(PSIGN_RENDER_TARGETS + 4, 0);
-		var format = tex == null || !depthEnabled ? 0 : tex.depthBuffer.format.getIndex();
-		signature.setI32(PSIGN_DEPTH_TARGET_FORMAT, format);
+		var depth = tex == null || !depthEnabled ? null : tex.depthBuffer;
+		setDepthProps(depth);
 		needFlush = true;
 	}
 
@@ -167,7 +177,7 @@ class PipelineBuilder {
 	public function setDepth( depth : h3d.mat.Texture ) {
 		signature.setI32(PSIGN_RENDER_TARGETS, 0);
 		signature.setI32(PSIGN_RENDER_TARGETS + 4, 0);
-		signature.setI32(PSIGN_DEPTH_TARGET_FORMAT, depth.format.getIndex());
+		setDepthProps(depth);
 		needFlush = true;
 	}
 
@@ -178,8 +188,8 @@ class PipelineBuilder {
 		for ( i in textures.length...8)
 			signature.setUI8(PSIGN_RENDER_TARGETS + i, 0);
 		var tex = textures[0];
-		var format = tex == null || !depthEnabled ? 0 : tex.depthBuffer.format.getIndex();
-		signature.setI32(PSIGN_DEPTH_TARGET_FORMAT, format);
+		var depth = tex == null || !depthEnabled ? null : tex.depthBuffer;
+		setDepthProps(depth);
 		needFlush = true;
 	}
 

@@ -11,7 +11,7 @@ class Collider {
 	public static function fromHmd(hmdModel : HMDModel) {
 		var header = hmdModel.lib.header;
 		for( h in header.models )
-			if( h.collider != null && header.geometries[h.geometry] == hmdModel.data ) {
+			if( header.geometries[h.geometry] == hmdModel.data ) {
 				return new Collider(hmdModel, header.colliders[h.collider]);
 			}
 		return null;

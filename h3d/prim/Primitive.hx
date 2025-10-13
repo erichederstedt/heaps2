@@ -23,7 +23,7 @@ class Primitive {
 
 	/**
 		Current amount of references to this Primitive.
-		Use `incref` and `decref` methods to affect this value. If it reaches 0, it will be automatically disposed.
+		Use `incref` and `decref` methods to affect this value. If it reaches 0, it will be atuomatically disposed.
 	**/
 	public var refCount(default, null) : Int = 0;
 

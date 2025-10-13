@@ -41,13 +41,13 @@ class CacheFile extends Cache {
 
 	public var allowSave = #if usesys false #else true #end;
 
-	public function new( allowCompile, recompileRT = false, showProgress = false ) {
+	public function new( allowCompile, recompileRT = false ) {
 		super();
 		this.allowCompile = allowCompile;
 		this.recompileRT = recompileRT || allowCompile;
 		this.file = FILENAME;
 		sourceFile = this.file + "." + getPlatformTag();
-		load(showProgress);
+		load();
 	}
 
 	function getPlatformTag() {
@@ -120,7 +120,7 @@ class CacheFile extends Cache {
 			for( r in wait ) {
 				if (showProgress && (waitCount % 5 == 0 || waitCount <= 1)) {
 					var progress = Std.int((1 - (waitCount / fullCount)) * 1000) / 10;
-					log('$progress%  \t(${fullCount - waitCount}/$fullCount)  \r');
+					Sys.print('$progress%  \t(${fullCount - waitCount}/$fullCount)  \r');
 				}
 
 				addNewShader(r);
@@ -135,14 +135,7 @@ class CacheFile extends Cache {
 			}
 			#else
 			haxe.Timer.delay(function() {
-				var shaderCount = wait.length;
-				if ( showProgress )
-					log('Compiling ${shaderCount} shaders');
-				for( i => r in wait ) {
-					if ( showProgress && i % 5 == 0 ) {
-						var progress = Std.int((i / shaderCount) * 1000) / 10;
-						log('$progress%  \t($i/$shaderCount)  \r');
-					}
+				for( r in wait ) {
 					addNewShader(r);
 					hxd.System.timeoutTick();
 				}
@@ -332,10 +325,7 @@ class CacheFile extends Cache {
 					throw "assert";
 				}
 				var rt2 = rttMap.get(r.specSign);
-				if( rt2 != null ) {
-					log("Duplicate runtime shader found");
-					continue;
-				}
+				if( rt2 != null ) throw "assert";
 				runtimeShaders.push(rt);
 				rttMap.set(r.specSign, { rt : rt, shaders : shaderList });
 			}

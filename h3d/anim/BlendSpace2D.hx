@@ -104,7 +104,7 @@ class BlendSpace2D extends h3d.anim.Animation {
 			// copy modified matrices references
 			@:privateAccess
 			for (object in point.objects) {
-				object.matrices[ptIndex] = (if( object.targetSkin != null ) object.targetSkin.jointsData[object.targetJoint].currentRelPos else object.targetObject?.defaultTransform) ?? object.matrices[ptIndex];
+				object.matrices[ptIndex] = (if( object.targetSkin != null ) object.targetSkin.jointsData[object.targetJoint].currentRelPose else object.targetObject.defaultTransform) ?? object.matrices[ptIndex];
 			}
 		}
 
@@ -163,10 +163,7 @@ class BlendSpace2D extends h3d.anim.Animation {
 				outMatrix.recomposeMatrix(outMatrix);
 			}
 
-			@:privateAccess if( object.targetSkin != null )
-				object.targetSkin.jointsData[object.targetJoint].currentRelPos = outMatrix;
-			else if( object.targetObject != null )
-				object.targetObject.defaultTransform = outMatrix;
+			@:privateAccess if( object.targetSkin != null ) object.targetSkin.jointsData[object.targetJoint].currentRelPose = outMatrix else object.targetObject.defaultTransform = outMatrix;
 		}
 	}
 
@@ -266,11 +263,7 @@ class BlendSpace2D extends h3d.anim.Animation {
 			ySmoothed = y;
 		}
 
-		var scale = 1.0;
-		if (animBlendLength > 0) {
-			scale /= animBlendLength;
-		}
-
+		var scale = 1.0 / animBlendLength;
 		if (scaleSpeedOutsideOfBounds)
 		{
 			scale *= outsideSpeedScale;

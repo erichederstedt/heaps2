@@ -352,7 +352,7 @@ class LocalFileSystem implements FileSystem {
 
 	var directoryCache : Map<String,Map<String,Bool>> = new Map();
 
-	function checkPathLeaf( path : String ) {
+	function checkPath( path : String ) {
 		// make sure the file is loaded with correct case !
 		var baseDir = new haxe.io.Path(path).dir;
 		var c = directoryCache.get(baseDir);
@@ -368,22 +368,9 @@ class LocalFileSystem implements FileSystem {
 			// added since then?
 			if( !isNew ) {
 				directoryCache.remove(baseDir);
-				return checkPathLeaf(path);
+				return checkPath(path);
 			}
 			return false;
-		}
-		return true;
-	}
-	function checkPath(path: String) {
-		if (StringTools.contains(path, "../"))
-			return checkPathLeaf(path);
-		var relPath = path.substr(baseDir.length);
-		var split = relPath.split("/");
-		var count = split.length;
-		for (i in 0...count) {
-			if (!checkPathLeaf(baseDir + split.join("/")))
-				return false;
-			split.pop();
 		}
 		return true;
 	}
@@ -392,37 +379,29 @@ class LocalFileSystem implements FileSystem {
 		var r = fileCache.get(path);
 		if( r != null )
 			return r.r;
-		return Exclusive.lock(function() {
-			var r = fileCache.get(path);
-			if( r != null )
-				return r.r;
-			var e = null;
-			var f = sys.FileSystem.fullPath(baseDir + path);
-			if( f == null )
-				return null;
-			f = f.split("\\").join("/");
-			if( !check || ((!isWindows || (isWindows && f == baseDir + path)) && sys.FileSystem.exists(f) && checkPath(f)) ) {
-				e = new LocalEntry(this, path.split("/").pop(), path, f);
-				convert.run(e);
-				if( e.file == null ) e = null;
-			}
-			fileCache.set(path, {r:e});
-			return e;
-		});
+		var e = null;
+		var f = sys.FileSystem.fullPath(baseDir + path);
+		if( f == null )
+			return null;
+		f = f.split("\\").join("/");
+		if( !check || ((!isWindows || (isWindows && f == baseDir + path)) && sys.FileSystem.exists(f) && checkPath(f)) ) {
+			e = new LocalEntry(this, path.split("/").pop(), path, f);
+			convert.run(e);
+			if( e.file == null ) e = null;
+		}
+		fileCache.set(path, {r:e});
+		return e;
 	}
 
 	public function clearCache() {
-		Exclusive.lock(function() {
-			for( path in fileCache.keys() ) {
-				var r = fileCache.get(path);
-				if( r.r == null ) fileCache.remove(path);
-			}
-			return true;
-		});
+		for( path in fileCache.keys() ) {
+			var r = fileCache.get(path);
+			if( r.r == null ) fileCache.remove(path);
+		}
 	}
 
 	public function removePathFromCache(path : String) {
-		Exclusive.lock(() -> fileCache.remove(path));
+		fileCache.remove(path);
 	}
 
 	public function exists( path : String ) {
@@ -438,7 +417,7 @@ class LocalFileSystem implements FileSystem {
 	}
 
 	public function dispose() {
-		Exclusive.lock(() -> fileCache = new Map());
+		fileCache = new Map();
 	}
 
 	public function dir( path : String ) : Array<FileEntry> {
@@ -452,12 +431,6 @@ class LocalFileSystem implements FileSystem {
 				r.push(entry);
 		}
 		return r;
-	}
-
-	public function delete( path : String ) : Bool {
-		removePathFromCache(path);
-		try sys.FileSystem.deleteFile(baseDir + path) catch( e : Dynamic ) { return false; };
-		return true;
 	}
 
 }
@@ -489,10 +462,6 @@ class LocalFileSystem implements FileSystem {
 
 	public function dir( path : String ) : Array<FileEntry> {
 		return null;
-	}
-
-	public function delete( path : String ) : Bool {
-		return false;
 	}
 }
 

@@ -315,7 +315,6 @@ enum TGlobal {
 	GroupMemoryBarrier;
 	UnpackSnorm4x8;
 	UnpackUnorm4x8;
-	Transpose;
 }
 
 enum SyntaxArgAccess {

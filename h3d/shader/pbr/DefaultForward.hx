@@ -12,34 +12,32 @@ class DefaultForward extends hxsl.Shader {
 		}
 
 		@const(4) var CASCADE_COUNT:Int;
-		@const(2) var MAX_DIR_SHADOW_COUNT:Int;
-		@const(16) var MAX_POINT_SHADOW_COUNT:Int;
-		@const(16) var MAX_SPOT_SHADOW_COUNT:Int;
+		@const(2) var DIR_SHADOW_COUNT:Int;
+		@const(16) var POINT_SHADOW_COUNT:Int;
+		@const(16) var SPOT_SHADOW_COUNT:Int;
 
 		@:import h3d.shader.pbr.Light.LightEvaluation;
-		@:import h3d.shader.pbr.BRDF;
+		@:import h3d.shader.pbr.BDRF;
 
 		// Import pbr info
 		var output : {color : Vec4, metalness : Float, roughness : Float, occlusion : Float, emissive : Float, depth : Float };
 
-		@param var lightInfos : Buffer<Vec4, 4096>;
+		@const(256) var BUFFER_SIZE : Int = 1;
+		@param var lightInfos : Buffer<Vec4, BUFFER_SIZE>;
 
 		// Buffer Info
 		@param var dirLightCount : Int;
-		@param var dirShadowCount : Int;
 		@param var pointLightCount : Int;
-		@param var pointShadowCount : Int;
 		@param var spotLightCount : Int;
-		@param var spotShadowCount : Int;
+		@param var dirLightStride : Int;
 		@param var pointLightStride : Int;
 		@param var spotLightStride : Int;
-		@param var cascadeLightStride : Int;
 
 		// ShadowMaps
 		@param var cascadeShadowMaps : Array<Sampler2D, CASCADE_COUNT>;
-		@param var dirShadowMaps : Array<Sampler2D, MAX_DIR_SHADOW_COUNT>;
-		@param var pointShadowMaps : Array<SamplerCube, MAX_POINT_SHADOW_COUNT>;
-		@param var spotShadowMaps : Array<Sampler2D, MAX_SPOT_SHADOW_COUNT>;
+		@param var dirShadowMaps : Array<Sampler2D, DIR_SHADOW_COUNT>;
+		@param var pointShadowMaps : Array<SamplerCube, POINT_SHADOW_COUNT>;
+		@param var spotShadowMaps : Array<Sampler2D, SPOT_SHADOW_COUNT>;
 
 		// Direct Lighting
 		@param var cameraPosition : Vec3;
@@ -142,7 +140,7 @@ class DefaultForward extends hxsl.Shader {
 		}
 
 		function evaluatePointShadow( index : Int ) : Float {
-			var i = index * 3 + pointLightStride;
+			var i = index * 3 + dirLightStride;
 
 			var shadow = 1.0;
 			if (lightInfos[i+2].g > 0) {
@@ -159,7 +157,7 @@ class DefaultForward extends hxsl.Shader {
 		}
 
 		function evaluatePointLight( index : Int ) : Vec3 {
-			var i = index * 3 + pointLightStride;
+			var i = index * 3 + dirLightStride;
 			var lightColor = lightInfos[i].rgb;
 			var size = lightInfos[i].a;
 			var lightPos = lightInfos[i+1].rgb;
@@ -170,7 +168,7 @@ class DefaultForward extends hxsl.Shader {
 		}
 
 		function evaluateSpotShadow( index : Int ) : Float {
-			var i = index * 8 + spotLightStride;
+			var i = index * 8 + dirLightStride + pointLightStride;
 
 			var shadow = 1.0;
 			if (lightInfos[i+3].b > 0) {
@@ -186,7 +184,7 @@ class DefaultForward extends hxsl.Shader {
 		}
 
 		function evaluateSpotLight( index : Int ) : Vec3 {
-			var i = index * 8 + spotLightStride;
+			var i = index * 8 + dirLightStride + pointLightStride;
 			var lightColor = lightInfos[i].rgb;
 			var range = lightInfos[i].a;
 			var lightPos = lightInfos[i+1].xyz;
@@ -204,7 +202,7 @@ class DefaultForward extends hxsl.Shader {
 		}
 
 		function evaluateCascadeLight() : Vec3 {
-			var i = cascadeLightStride;
+			var i = dirLightStride + pointLightStride + spotLightStride;
 			var lightColor = lightInfos[i].rgb;
 			var lightDir = lightInfos[i+1].xyz;
 
@@ -219,7 +217,7 @@ class DefaultForward extends hxsl.Shader {
 		}
 
 		function evaluateCascadeShadow() : Float {
-			var i = cascadeLightStride;
+			var i = dirLightStride + pointLightStride + spotLightStride;
 			var shadow = 1.0;
 			var shadowProj = mat3x4(lightInfos[i + 2], lightInfos[i + 3], lightInfos[i + 4]);
 
@@ -245,40 +243,39 @@ class DefaultForward extends hxsl.Shader {
 			F0 = mix(pbrSpecularColor, albedoGamma, metalness);
 
 			// Dir Light With Shadow
-			@unroll for( l in 0 ... MAX_DIR_SHADOW_COUNT ) {
-				if ( l < dirShadowCount ) {
-					var c = evaluateDirLight(l);
-					if ( dot(c, c) > 1e-6 )
-						c *= evaluateDirShadow(l);
-					lightAccumulation += c;
-				}
+			@unroll for( l in 0 ... DIR_SHADOW_COUNT ) {
+				var c = evaluateDirLight(l);
+				if ( dot(c, c) > 1e-6 )
+					c *= evaluateDirShadow(l);
+				lightAccumulation += c;
 			}
 			// Dir Light
-			for( l in dirShadowCount ... dirLightCount )
+			var start = DIR_SHADOW_COUNT;
+			if ( CASCADE_COUNT > 0 )
+				start++;
+			@unroll for( l in start ... dirLightCount + DIR_SHADOW_COUNT )
 				lightAccumulation += evaluateDirLight(l);
 
 			// Point Light With Shadow
-			@unroll for( l in 0 ... MAX_POINT_SHADOW_COUNT ) {
-				if ( l < pointShadowCount ) {
-					var c = evaluatePointLight(l);
-					if ( dot(c, c) > 1e-6 )
-						c *= evaluatePointShadow(l);
-					lightAccumulation += c;
-				}
+			@unroll for( l in 0 ... POINT_SHADOW_COUNT ) {
+				var c = evaluatePointLight(l);
+				if ( dot(c, c) > 1e-6 )
+					c *= evaluatePointShadow(l);
+				lightAccumulation += c;
 			}
 			// Point Light
-			for( l in pointShadowCount ... pointLightCount + pointShadowCount )
+			@unroll for( l in POINT_SHADOW_COUNT ... pointLightCount + POINT_SHADOW_COUNT )
 				lightAccumulation += evaluatePointLight(l);
 
 			// Spot Light With Shadow
-			@unroll for( l in 0 ... MAX_SPOT_SHADOW_COUNT ) {
+			@unroll for( l in 0 ... SPOT_SHADOW_COUNT ) {
 				var c = evaluateSpotLight(l);
 				if ( dot(c, c) > 1e-6 )
 					c *= evaluateSpotShadow(l);
 				lightAccumulation += c;
 			}
 			// Spot Light
-			for( l in spotShadowCount ... spotLightCount + spotShadowCount )
+			@unroll for( l in SPOT_SHADOW_COUNT ... spotLightCount + SPOT_SHADOW_COUNT )
 				lightAccumulation += evaluateSpotLight(l);
 
 			// Cascade shadows

@@ -58,7 +58,9 @@ class ScreenFx<T:h3d.shader.ScreenShader> {
 		ctx.fillGlobals(buffers, rts);
 		ctx.fillParams(buffers, rts, shaders);
 		engine.uploadShaderBuffers(buffers, Globals);
-		engine.uploadInstanceShaderBuffers(buffers);
+		engine.uploadShaderBuffers(buffers, Params);
+		engine.uploadShaderBuffers(buffers, Textures);
+		engine.uploadShaderBuffers(buffers, Buffers);
 		primitive.render(engine);
 		if( isNewCtx )
 			ctx.clearCurrent();

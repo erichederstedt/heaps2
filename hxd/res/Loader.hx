@@ -17,7 +17,7 @@ class Loader {
 	}
 
 	public function cleanCache() {
-		hxd.fs.Exclusive.lock(() -> cache = new Map());
+		cache = new Map();
 	}
 
 	public function dir( path : String ) : Array<Any> {
@@ -37,26 +37,19 @@ class Loader {
 	}
 
 	public function loadCache<T:hxd.res.Resource>( path : String, c : Class<T> ) : T {
-		return hxd.fs.Exclusive.lock(function() {
-			var res : T = cache.get(path);
-			if( res == null ) {
-				var entry = fs.get(path);
-				var old = currentInstance;
-				currentInstance = this;
-				res = Type.createInstance(c, [entry]);
-				currentInstance = old;
-				cache.set(path, res);
-			} else {
-				if( Std.downcast(res,c) == null )
-					throw path+" has been reintrepreted from "+Type.getClass(res)+" to "+c;
-			}
-			return res;
-		});
-	}
-
-	public function delete( path : String ) : Bool {
-		cache.remove(path);
-		return fs.delete(path);
+		var res : T = cache.get(path);
+		if( res == null ) {
+			var entry = fs.get(path);
+			var old = currentInstance;
+			currentInstance = this;
+			res = Type.createInstance(c, [entry]);
+			currentInstance = old;
+			cache.set(path, res);
+		} else {
+			if( Std.downcast(res,c) == null )
+				throw path+" has been reintrepreted from "+Type.getClass(res)+" to "+c;
+		}
+		return res;
 	}
 
 	public function dispose() {

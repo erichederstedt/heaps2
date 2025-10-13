@@ -149,8 +149,6 @@ class Build {
 		writeRec(pak.root);
 		return out;
 	}
-	
-	public static dynamic function onInit( b : Build ) {}
 
 	function makePak() {
 
@@ -159,7 +157,6 @@ class Build {
 
 		fs = new hxd.fs.LocalFileSystem(resPath, configuration);
 		fs.convert.onConvert = function(c) Sys.println("\tConverting " + c.srcPath);
-		onInit(this);
 
 		var pak = new Data();
 		out = { bytes : [], size : 0 };

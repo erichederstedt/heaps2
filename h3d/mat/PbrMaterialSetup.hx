@@ -25,9 +25,11 @@ class PbrMaterialSetup extends MaterialSetup {
 		return @:privateAccess new PbrMaterial();
 	}
 
-	public function gloss() {
-		return true;
+	#if (hide && (sys || nodejs))
+	public function createModelLibShader() {
+		return new hrt.prefab.l3d.ModelLibrary.ModelLibShader();
 	}
+	#end
 
 	public static function set() {
 		MaterialSetup.current = new PbrMaterialSetup();

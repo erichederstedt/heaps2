@@ -175,15 +175,6 @@ class ModelCache {
 		}
 	}
 
-	public function refreshLodConfig() {
-		for ( model in models )
-			for ( p in @:privateAccess model.lib.cachedPrimitives ) {
-				if ( p == null )
-					continue;
-				@:privateAccess p.lodConfig = null;
-			}
-	}
-
 	#if hide
 
 	public function loadPrefab( res : hxd.res.Prefab, ?p : hrt.prefab.Prefab, ?parent : h3d.scene.Object ) {
@@ -214,4 +205,5 @@ class ModelCache {
 	}
 
 	#end
+
 }

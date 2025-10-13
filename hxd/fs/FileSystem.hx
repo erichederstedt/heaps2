@@ -5,6 +5,5 @@ interface FileSystem {
 	public function get( path : String ) : FileEntry;
 	public function exists( path : String ) : Bool;
 	public function dispose() : Void;
-	public function dir( path : String ) : Array<FileEntry>;
-	public function delete( path : String ) : Bool;
+	public function dir( path : String ) : Array<FileEntry> ;
 }

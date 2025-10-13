@@ -15,14 +15,6 @@ enum SystemValue {
 	IsMobile;
 }
 
-enum KeyboardLayout {
-	QWERTY;
-	AZERTY;
-	QWERTZ;
-	QZERTY;
-	Unknown;
-}
-
 class System {
 
 	public static var width(get,never) : Int;
@@ -96,12 +88,6 @@ class System {
 	public static function getLocale() : String {
 		return "en_EN";
 	}
-
-	public static function getKeyboardLayout() : KeyboardLayout {
-		return Unknown;
-	}
-
-	public static dynamic function onKeyboardLayoutChange() : Void {}
 
 	// getters
 

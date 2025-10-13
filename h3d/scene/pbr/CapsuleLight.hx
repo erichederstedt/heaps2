@@ -91,14 +91,10 @@ class CapsuleLight extends Light {
 		// TODO optimize culling
 		s.r = range + length;
 
-		if( !inFrustum(ctx.camera.frustum) )
+		if( !ctx.camera.frustum.hasSphere(s) )
 			return;
 
 		super.emit(ctx);
 		ctx.emitPass(ctx.pbrLightPass, this);
-	}
-
-	override function inFrustum(frustum : h3d.col.Frustum) {
-		return frustum.hasSphere(s);
 	}
 }

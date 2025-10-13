@@ -15,14 +15,6 @@ enum SystemValue {
 	IsMobile;
 }
 
-enum KeyboardLayout {
-	QWERTY;
-	AZERTY;
-	QWERTZ;
-	QZERTY;
-	Unknown;
-}
-
 class System {
 
 	public static var width(get,never) : Int;
@@ -157,7 +149,7 @@ class System {
 
 	public static function setClipboardText(text:String) : Bool {
 		#if (hide && editor)
-		nw.Clipboard.get().set({ data: text, type: nw.Clipboard.ClipboardType.Text });
+		nw.Clipboard.get().set(text, Text);
 		return true;
 		#end
 		return false;
@@ -166,12 +158,6 @@ class System {
 	public static function getLocale() : String {
 		return js.Browser.navigator.language + "_" + js.Browser.navigator.language.toUpperCase();
 	}
-
-	public static function getKeyboardLayout() : KeyboardLayout {
-		return Unknown;
-	}
-
-	public static dynamic function onKeyboardLayoutChange() : Void {}
 
 	// getters
 

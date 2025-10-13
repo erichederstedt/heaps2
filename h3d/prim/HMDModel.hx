@@ -8,7 +8,7 @@ class HMDModel extends MeshPrimitive {
 	var dataPosition : Int;
 	var indexCount : Int;
 	var indexesTriPos : Array<Int>;
-	public var lib(default,null) : hxd.fmt.hmd.Library;
+	var lib : hxd.fmt.hmd.Library;
 	var curMaterial : Int;
 	var collider : h3d.col.Collider;
 	var normalsRecomputed : String;
@@ -29,10 +29,6 @@ class HMDModel extends MeshPrimitive {
 			this.blendshape = new Blendshape(this);
 		if ( lib.header.colliders != null && lib.header.colliders.length > 0 )
 			this.colliderData = Collider.fromHmd(this);
-	}
-
-	public function getPath() {
-		return lib.resource.entry.path;
 	}
 
 	override function hasInput( name : String ) {
@@ -63,12 +59,8 @@ class HMDModel extends MeshPrimitive {
 		return lods[lod].indexCounts[material];
 	}
 
-	public function getDataBuffers(fmt, ?defaults, ?material) {
-		return getLodBuffers(fmt, 0, defaults, material);
-	}
-
-	public function getLodBuffers(fmt, lodIdx, ?defaults, ?material) {
-		return lib.getBuffers(lods[lodIdx], fmt, defaults, material);
+	public function getDataBuffers(fmt, ?defaults,?material) {
+		return lib.getBuffers(data, fmt, defaults, material);
 	}
 
 	public function loadSkin(skin) {
@@ -352,6 +344,13 @@ class HMDModel extends MeshPrimitive {
 	}
 
 	public function getLodConfig() {
+		if (lodConfig != null)
+			return lodConfig;
+
+		var d = lib.resource.entry.directory;
+		if (d.indexOf('res/') < 0)
+			d = 'res/$d';
+		lodConfig = @:privateAccess ModelDatabase.current.getDefaultLodConfig(d);
 		return lodConfig;
 	}
 }

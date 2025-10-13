@@ -114,11 +114,10 @@ class Sphere extends Collider {
 
 	#if !macro
 	public function makeDebugObj() : h3d.scene.Object {
-		var prim = h3d.prim.Sphere.defaultUnitSphere();
-		var mesh = new h3d.scene.Mesh(prim);
-		mesh.scale(r);
-		mesh.setPosition(x,y,z);
-		return mesh;
+		var prim = new h3d.prim.Sphere(r, 20, 15);
+		prim.translate(x, y, z);
+		prim.addNormals();
+		return new h3d.scene.Mesh(prim);
 	}
 	#end
 

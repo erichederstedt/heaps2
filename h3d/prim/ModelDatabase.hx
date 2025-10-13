@@ -1,15 +1,12 @@
 package h3d.prim;
 
-#if !macro
 typedef ModelDataInput = {
 	var resourceDirectory : String;
 	var resourceName : String;
 	var objectName : String;
 	var hmd : HMDModel;
 	var skin : h3d.scene.Skin;
-	var collide : Dynamic;
 }
-#end
 
 class ModelDatabase {
 
@@ -19,12 +16,10 @@ class ModelDatabase {
 	static var FILE_NAME = "model.props";
 
 	static var LOD_CONFIG = "lodConfig";
-	static var LOD_CONFIG_FIELD = "lods.screenRatio";
 	static var DYN_BONES_CONFIG = "dynamicBones";
 
-	public static dynamic function customizeLodConfig(c : Array<Float>) {
-		return c;
-	}
+	static var defaultLodConfigs : Map<String, Array<Float>> = new Map();
+	static var baseLodConfig = [ 0.5, 0.2, 0.01];
 
 	function new() {
 	}
@@ -42,16 +37,7 @@ class ModelDatabase {
 		if( cached != null )
 			return cached;
 		var file = getFilePath(directory);
-		#if macro
-		if ( !haxe.io.Path.isAbsolute(file) )
-			file = haxe.macro.Context.definedValue("resourcesPath") + file;
-		var value = try haxe.Json.parse(sys.io.File.getBytes(file).toString()) catch( e : hxd.res.NotFound ) {};
-		#else
-		var fs = Std.downcast(hxd.res.Loader.currentInstance.fs, hxd.fs.LocalFileSystem);
-		if ( fs != null && haxe.io.Path.isAbsolute(file) )
-			file = file.substr(fs.baseDir.length);
 		var value = try haxe.Json.parse(hxd.res.Loader.currentInstance.load(file).toText()) catch( e : hxd.res.NotFound ) {};
-		#end
 		ModelDatabase.db.set(directory, value);
 		return value;
 	}
@@ -63,38 +49,6 @@ class ModelDatabase {
 		return Reflect.field(rootData, key);
 	}
 
-	// Used to clean previous version of modelDatabase, should be removed after some time
-	function cleanOldModelData( rootData : Dynamic, key : String) {
-		var oldKey = '${key}_LOD0';
-
-		var oldLodConfig = Reflect.field(rootData, LOD_CONFIG);
-		if (oldLodConfig != null) {
-			for (f in Reflect.fields(oldLodConfig)) {
-				if (key.indexOf(f) < 0 && oldKey.indexOf(f) < 0)
-					continue;
-
-				var c = Reflect.field(oldLodConfig, f);
-
-				var newData = { "lodConfig" : c };
-				Reflect.setField(rootData, key, newData);
-
-				// Remove old entry
-				Reflect.deleteField(oldLodConfig, f);
-				Reflect.setField(rootData, LOD_CONFIG, oldLodConfig);
-			}
-
-			if (oldLodConfig == null || Reflect.fields(oldLodConfig).length == 0)
-				Reflect.deleteField(rootData, LOD_CONFIG);
-		}
-
-		oldLodConfig = Reflect.field(rootData, oldKey);
-		if (oldLodConfig != null) {
-			Reflect.deleteField(rootData, oldKey);
-			Reflect.setField(rootData, key, oldLodConfig);
-		}
-	}
-
-	#if !macro
 	function saveModelData( directory : String, resourceName : String, modelName : String, data : Dynamic ) {
 		var file = getFilePath(directory);
 
@@ -117,6 +71,48 @@ class ModelDatabase {
 		throw "Can't save model props database " + file;
 		#end
 	}
+
+	function getDefaultLodConfig( dir : String ) : Array<Float> {
+		var fs = Std.downcast(hxd.res.Loader.currentInstance.fs, hxd.fs.LocalFileSystem);
+		if (fs == null)
+			return baseLodConfig;
+
+		#if (sys || nodejs)
+			var c = @:privateAccess fs.convert.getConfig(defaultLodConfigs, baseLodConfig, dir, function(fullObj) {
+				if (Reflect.hasField(fullObj, "lods.screenRatio"))
+					return Reflect.field(fullObj, "lods.screenRatio");
+
+				return baseLodConfig;
+			});
+			return c;
+		#else
+			return baseLodConfig;
+		#end
+	}
+
+	// Used to clean previous version of modelDatabase, should be removed after some time
+	function cleanOldModelData( rootData : Dynamic, key : String) {
+		var oldLodConfig = Reflect.field(rootData, LOD_CONFIG);
+		if (oldLodConfig != null) {
+			for (f in Reflect.fields(oldLodConfig)) {
+				if (key.indexOf(f) < 0)
+					continue;
+
+				var c = Reflect.field(oldLodConfig, f);
+
+				var newData = { "lodConfig" : c };
+				Reflect.setField(rootData, key, newData);
+
+				// Remove old entry
+				Reflect.deleteField(oldLodConfig, f);
+				Reflect.setField(rootData, LOD_CONFIG, oldLodConfig);
+			}
+
+			if (oldLodConfig == null || Reflect.fields(oldLodConfig).length == 0)
+				Reflect.deleteField(rootData, LOD_CONFIG);
+		}
+	}
+
 
 	function loadLodConfig( input : ModelDataInput, data : Dynamic ) {
 		var c = Reflect.field(data, LOD_CONFIG);
@@ -179,7 +175,7 @@ class ModelDatabase {
 
 	function saveLodConfig( input : ModelDataInput, data : Dynamic ) @:privateAccess {
 		var isDefaultConfig = true;
-		var defaultConfig = hxd.fmt.hmd.Library.getDefaultLodConfig(input.resourceDirectory);
+		var defaultConfig = getDefaultLodConfig(input.resourceDirectory);
 
 		if (input.hmd.lodConfig != null) {
 			if (defaultConfig.length != input.hmd.lodConfig.length)
@@ -236,12 +232,6 @@ class ModelDatabase {
 		Reflect.setField(data, DYN_BONES_CONFIG, dynamicJoints);
 	}
 
-	function saveCollideConfig( input : ModelDataInput, data : Dynamic ) {
-		if ( !Reflect.hasField(input.collide, "collide") )
-			Reflect.deleteField(data, "collide");
-		else
-			Reflect.setField(data, "collide", Reflect.field(input.collide, "collide"));
-	}
 
 	public function loadModelProps( input : ModelDataInput ) {
 		var data : Dynamic = getModelData(input.resourceDirectory, input.resourceName, input.objectName);
@@ -259,11 +249,9 @@ class ModelDatabase {
 
 		saveLodConfig(input, data);
 		saveDynamicBonesConfig(input, data);
-		saveCollideConfig(input, data);
 
 		saveModelData(input.resourceDirectory, input.resourceName, input.objectName, data);
 	}
-	#end
 
 	public static var current = new ModelDatabase();
 }

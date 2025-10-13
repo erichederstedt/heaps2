@@ -440,8 +440,4 @@ class Scene extends Object implements h3d.IDrawable implements hxd.SceneEvents.I
 			prevEngine = null;
 		}
 	}
-
-	public function getRenderCamera() {
-		return ctx.camera;
-	}
 }
