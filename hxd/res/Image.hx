@@ -719,6 +719,12 @@ class Image extends Resource {
 			load();
 		else
 			entry.load(load);
+		@:privateAccess if (tex.waitLoads != null) {
+			var arr = tex.waitLoads;
+			tex.waitLoads = null;
+			for (f in arr)
+				f();
+		}
 	}
 
 	public function toTexture():h3d.mat.Texture {
